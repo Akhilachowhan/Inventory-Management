@@ -1,0 +1,98 @@
+<div class="login-container">
+    <!-- LEFT PANE -->
+    <div class="login-left">
+        <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 40px;">
+                <div style="background: #3b82f6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                    D
+                </div>
+                <div>
+                    <h3 style="line-height: 1;">DistroInv</h3>
+                    <span style="font-size: 12px; color: #64748b;">Distributed Inventory System</span>
+                </div>
+            </div>
+            
+            <h1 class="login-title-primary">Manage inventory<br><span class="login-title-accent">across 3 cities.</span></h1>
+            <p class="login-subtitle">A distributed database architecture powering real-time inventory management across Hyderabad, Chennai, and Bangalore.</p>
+        </div>
+        
+        <div class="node-status-box">
+            <div class="node-status-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Live Node Status
+            </div>
+            <div class="node-card">
+                <div><strong>Hyderabad</strong><span>inventory_hyd</span></div>
+                <div class="node-online"><span style="display:block; width:8px; height:8px; background:#10b981; border-radius:50%;"></span> ONLINE</div>
+            </div>
+            <div class="node-card">
+                <div><strong>Chennai</strong><span>inventory_che</span></div>
+                <div class="node-online"><span style="display:block; width:8px; height:8px; background:#10b981; border-radius:50%;"></span> ONLINE</div>
+            </div>
+            <div class="node-card">
+                <div><strong>Bangalore</strong><span>inventory_blr</span></div>
+                <div class="node-online"><span style="display:block; width:8px; height:8px; background:#10b981; border-radius:50%;"></span> ONLINE</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div class="login-right">
+        <div class="login-box">
+            <h1 style="font-size: 32px; margin-bottom: 8px;">Welcome back</h1>
+            <p style="color: #94a3b8; margin-bottom: 32px;">Sign in to the Inventory Management System</p>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="Enter username" required>
+                </div>
+                <div class="form-group mb-4">
+                    <label>Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1rem; padding: 1rem; border-radius: 12px;">
+                    Sign In
+                </button>
+            </form>
+
+            <div style="text-align: center; color: #475569; font-size: 11px; margin-top: 24px;">B.Tech Mini Project — Distributed Database Architecture</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.fillDemo = function(u, p) {
+        document.getElementById('username').value = u;
+        document.getElementById('password').value = p;
+    }
+
+    window.initLogin = function() {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+            btn.textContent = 'Authenticating...';
+            btn.disabled = true;
+
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const response = await ApiService.login(username, password);
+                
+                localStorage.setItem('token', response.token);
+                localStorage.setItem('user', JSON.stringify(response.user));
+                
+                window.app.showToast('Login successful', 'success');
+                window.location.hash = 'dashboard';
+                window.app.init(); // Reinitialize
+            } catch (error) {
+                window.app.showToast(error.message, 'error');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    }
+</script>

@@ -1,0 +1,111 @@
+<div style="margin-bottom: 20px; text-align: right;">
+    <button class="logout-btn" onclick="window.showPurchaseModal()" style="background: #4f6ef7; color: white;">+ Record Purchase</button>
+</div>
+<table>
+    <thead>
+        <tr>
+            <th>Purchase ID</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Total Cost</th>
+        </tr>
+    </thead>
+    <tbody id="purchases-tbody">
+        <tr>
+            <td colspan="4" style="text-align: center;">Loading purchases...</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Restoring Modal Logic properly styled -->
+<div class="modal-overlay hidden" id="purchase-modal">
+    <div class="modal-content" style="text-align:left;">
+        <h3 id="purchase-modal-title" style="margin-bottom: 16px;">Record Purchase</h3>
+        <form id="purchase-form">
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #6b7280;">Product</label>
+                <select id="purchase-product" required style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px;"></select>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #6b7280;">Supplier</label>
+                <select id="purchase-supplier" required style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px;"></select>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #6b7280;">Quantity</label>
+                <input type="number" min="1" id="purchase-qty" required style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #6b7280;">Purchase Price (per unit)</label>
+                <input type="number" step="0.01" id="purchase-price" required style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            </div>
+            <div style="margin-top: 16px; text-align: right;">
+                <button type="button" class="logout-btn" onclick="window.closePurchaseModal()">Cancel</button>
+                <button type="submit" class="logout-btn" style="background:#4f6ef7; color:white;">Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    window.initPurchase = async function() {
+        
+
+        await loadPurchasesTable();
+
+        document.getElementById('purchase-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                product_id: parseInt(document.getElementById('purchase-product').value),
+                supplier_id: parseInt(document.getElementById('purchase-supplier').value),
+                quantity: parseInt(document.getElementById('purchase-qty').value),
+                purchase_price: parseFloat(document.getElementById('purchase-price').value)
+            };
+            try {
+                const btn = e.target.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                await ApiService.recordPurchase(data);
+                window.app.showToast('Purchase recorded and stock updated', 'success');
+                closePurchaseModal();
+                loadPurchasesTable();
+                btn.disabled = false;
+            } catch(e) { 
+                window.app.showToast(e.message, 'error');
+                e.target.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+    }
+
+    async function loadPurchasesTable() {
+        try {
+            const purchases = await ApiService.getPurchases();
+            const tbody = document.getElementById('purchases-tbody');
+            if(!purchases.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No purchases found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = purchases.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.product_name}</td>
+                    <td>${p.quantity}</td>
+                    <td>${(p.quantity * p.purchase_price).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        } catch(e) {}
+    }
+
+    window.showPurchaseModal = async function() {
+        try {
+            const prods = await ApiService.getProducts();
+            const sups = await ApiService.getSuppliers();
+            document.getElementById('purchase-product').innerHTML = '<option value="" disabled selected>Select Product</option>' + prods.map(p => `<option value="${p.id}">${p.name} (Stock: ${p.quantity})</option>`).join('');
+            document.getElementById('purchase-supplier').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + sups.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            document.getElementById('purchase-form').reset();
+            document.getElementById('purchase-modal').classList.remove('hidden');
+        } catch(e) {}
+    }
+    window.closePurchaseModal = function() {
+        document.getElementById('purchase-modal').classList.add('hidden');
+    }
+</script>

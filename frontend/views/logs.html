@@ -1,0 +1,78 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h1 style="font-size: 24px; margin-bottom: 4px;">Operation Logs</h1>
+            <span style="color: #64748b; font-size: 13px;">Querying all 3 nodes</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="clearLogs()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">Clear Logs</button>
+    </div>
+
+    <!-- Intro Card -->
+    <div class="card" style="margin-bottom: 24px; border: 1px solid #1e293b; display: flex; align-items: flex-start; gap: 12px;">
+        <svg style="color: #3b82f6; width: 20px; height: 20px; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <div>
+            <h3 style="color: #60a5fa; font-size: 14px; margin-bottom: 4px;">Distributed Operation Log</h3>
+            <span style="color: #94a3b8; font-size: 12px;">All cross node operations (replication, 2PC commits, distributed queries) are logged here for auditing and debugging.</span>
+        </div>
+    </div>
+
+    <!-- Logs List -->
+    <div class="card" style="padding: 0; overflow: hidden; background: #0f172a;">
+        <div style="padding: 16px 24px; border-bottom: 1px solid #1e293b; font-weight: 600; font-size: 14px; color: #f8fafc;">
+            Recent Operations
+        </div>
+        <div id="logs-container">
+            <!-- Injected via JS -->
+            <div style="padding: 30px; text-align: center; color: #64748b;">Loading logs...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.initLogs = async function() {
+        
+
+        await loadLogs();
+    }
+
+    async function loadLogs() {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch('/api/logs', { headers: { 'Authorization': `Bearer ${token}` } });
+            const logs = await res.json();
+            
+            const container = document.getElementById('logs-container');
+            if (logs.length === 0) {
+                container.innerHTML = '<div style="padding: 30px; text-align: center; color: #64748b;">No recent operations recorded. Try creating a product or generating demo data!</div>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px; border-bottom: 1px solid #1e293b;">
+                    <div style="display:flex; gap: 16px; align-items: flex-start;">
+                        <svg style="color: #10b981; min-width: 20px; width: 20px; height: 20px; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <div>
+                            <div style="font-weight: 600; color: #60a5fa; font-size: 13px; margin-bottom: 6px; letter-spacing: 0.5px;">
+                                ${log.action} <span style="color: #f8fafc; margin-left: 12px; font-weight: 400;">${log.nodes.join('  ')}</span>
+                            </div>
+                            <div style="color: #cbd5e1; font-size: 13.5px; margin-bottom: 8px;">${log.message}</div>
+                            <div style="color: #64748b; font-size: 12px;">${log.timestamp}</div>
+                        </div>
+                    </div>
+                    <div style="color: #10b981; font-weight: 600; font-size: 13px;">${log.status}</div>
+                </div>
+            `).join('');
+        } catch(err) {
+            window.app.showToast('Failed to load logs', 'error');
+        }
+    }
+
+    window.clearLogs = async function() {
+        if(!confirm('Clear all operation logs?')) return;
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch('/api/logs', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            if(res.ok) { window.app.showToast('Logs cleared', 'success'); loadLogs(); }
+        } catch(err) { window.app.showToast('Failed to clear logs', 'error'); }
+    }
+</script>

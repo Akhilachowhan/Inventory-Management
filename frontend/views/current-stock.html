@@ -1,0 +1,93 @@
+<div style="margin-bottom: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+    <input type="file" id="stock-csv-upload" accept=".csv" multiple style="display: none;" onchange="window.handleStockCSVUpload(event)">
+    <button class="logout-btn" onclick="document.getElementById('stock-csv-upload').click()" style="background: #10b981; color: white;">📁 Upload Demo CSV</button>
+</div>
+<table>
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Qty</th>
+            <th>Cost</th>
+            <th>Sell</th>
+        </tr>
+    </thead>
+    <tbody id="stock-tbody">
+        <tr>
+            <td colspan="5" style="text-align: center;">Loading stock data...</td>
+        </tr>
+    </tbody>
+</table>
+
+<script>
+    window.initCurrentStock = async function() {
+        
+
+        await loadStockData();
+    }
+
+    window.handleStockCSVUpload = async function(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        window.app.showToast(`Processing ${files.length} file(s)...`, 'success');
+
+        for (let f = 0; f < files.length; f++) {
+            const file = files[f];
+            const text = await file.text();
+            
+            const lines = text.split('\\n').filter(line => line.trim().length > 0);
+            if (lines.length < 2) continue;
+
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('product'));
+            const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('cost') || h.includes('sell'));
+            const qtyIdx = headers.findIndex(h => h.includes('qty') || h.includes('quantity') || h.includes('stock'));
+
+            if (nameIdx === -1) continue;
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim());
+                if(values.length < 2) continue;
+                
+                const data = {
+                    name: values[nameIdx] ? values[nameIdx].replace(/^"|"$/g, '') : '',
+                    price: priceIdx !== -1 && values[priceIdx] ? parseFloat(values[priceIdx].replace(/[^0-9.-]+/g,"")) || 0 : 0,
+                    quantity: qtyIdx !== -1 && values[qtyIdx] ? parseInt(values[qtyIdx].replace(/[^0-9-]+/g,"")) || 0 : 0,
+                    min_stock: 10,
+                    supplier_id: null
+                };
+                
+                try { await ApiService.createProduct(data); } 
+                catch(err) { console.error('Row failed:', err); }
+            }
+        }
+
+        window.app.showToast('All Demo Stock Data Uploaded Successfully!', 'success');
+        loadStockData();
+        event.target.value = ''; 
+    };
+
+    async function loadStockData() {
+        try {
+            const products = await ApiService.getProducts();
+            const tbody = document.getElementById('stock-tbody');
+            if(!products.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No stock found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = products.map(p => `
+                <tr>
+                    <td>prod${p.id}</td>
+                    <td>${p.name}</td>
+                    <td style="font-weight: bold; color: ${p.quantity <= p.min_stock ? '#ef4444' : '#10b981'}">${p.quantity}</td>
+                    <td>-</td>
+                    <td>${p.price}</td>
+                </tr>
+            `).join('');
+        } catch(e) {
+            window.app.showToast('Failed to load stock', 'error');
+        }
+    }
+</script>

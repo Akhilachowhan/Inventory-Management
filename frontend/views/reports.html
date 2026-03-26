@@ -1,0 +1,200 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h1 style="font-size: 24px; margin-bottom: 4px;">Reports & Analytics</h1>
+            <span style="color: #64748b; font-size: 13px;" id="reports-subtitle">Querying active nodes...</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="background: #1e293b; border-radius: 8px; border: 1px solid #334155; display: flex; overflow: hidden; margin-right: 16px;">
+                <button class="btn btn-sm" style="background: transparent; border: none; padding: 6px 16px; font-size: 12px; color: #94a3b8;">Daily</button>
+                <button class="btn btn-sm" style="background: transparent; border: none; padding: 6px 16px; border-left: 1px solid #334155; border-right: 1px solid #334155; font-size: 12px; color: #94a3b8;">Weekly</button>
+                <button class="btn btn-sm" style="background: #3b82f6; border: none; padding: 6px 16px; font-size: 12px; color: #ffffff; border-radius: 6px;">Monthly</button>
+            </div>
+            <button class="btn btn-sm" style="background: transparent; border: 1px solid #334155; color: #94a3b8;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: middle; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- 3 SUMMARY CARDS -->
+    <div class="grid-3 mb-4">
+        <div class="card" style="border-top: 2px solid #10b981;">
+            <span style="color: #94a3b8; font-size: 13px;">Total Revenue</span>
+            <h2 id="rep-revenue" style="color: #10b981; margin: 8px 0; font-size: 28px;">₹ --</h2>
+            <span style="color: #64748b; font-size: 11px;">All nodes combined</span>
+        </div>
+        <div class="card" style="border-top: 2px solid #ef4444;">
+            <span style="color: #94a3b8; font-size: 13px;">Total Procurement</span>
+            <h2 id="rep-procurement" style="color: #ef4444; margin: 8px 0; font-size: 28px;">₹ --</h2>
+            <span style="color: #64748b; font-size: 11px;">All nodes combined</span>
+        </div>
+        <div class="card" style="border-top: 2px solid #3b82f6;">
+            <span style="color: #94a3b8; font-size: 13px;">Gross Profit</span>
+            <h2 id="rep-profit" style="color: #3b82f6; margin: 8px 0; font-size: 28px;">₹ --</h2>
+            <span style="color: #64748b; font-size: 11px;">All nodes combined</span>
+        </div>
+    </div>
+
+    <!-- MAIN CHARTS -->
+    <div class="grid-2 mb-4">
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 4px;">Monthly Sales Trend (₹K)</h3>
+            <span style="color: #64748b; font-size: 11px; display: block; margin-bottom: 24px;">Per warehouse node</span>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 4px;">Sales vs Purchases (₹K)</h3>
+            <span style="color: #64748b; font-size: 11px; display: block; margin-bottom: 24px;">Per warehouse node</span>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="salesVsPurchasesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="grid-2">
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 4px;">Sales by Category (₹K)</h3>
+            <span style="color: #64748b; font-size: 11px; display: block; margin-bottom: 24px;">Aggregated across all nodes</span>
+            <div class="chart-container" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 24px;">Top Sales Transactions</h3>
+            <div id="top-transactions-list" style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let trendChartObj = null;
+    let vsChartObj = null;
+    let catChartObj = null;
+
+    window.initReports = async function() {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/reports/analytics', { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || 'Failed to fetch analytics');
+
+            const toLakhs = (val) => '₹' + (Number(val) / 100000).toFixed(2) + 'L';
+
+            document.getElementById('rep-revenue').textContent = toLakhs(data.totalRevenue);
+            document.getElementById('rep-procurement').textContent = toLakhs(data.totalProcurement);
+            document.getElementById('rep-profit').textContent = toLakhs(data.grossProfit);
+            document.getElementById('reports-subtitle').textContent = `Querying all ${data.activeNodes.length} nodes: ${data.activeNodes.join(', ')}`;
+
+            // Populate Top Transactions list
+            document.getElementById('top-transactions-list').innerHTML = data.topTransactions.map(t => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #1e293b;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <span style="font-weight: 600; font-size: 12px; color: #f8fafc; min-width: 40px">${t.node}</span>
+                        <div>
+                            <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">${t.client}</div>
+                            <div style="font-size: 11px; color: #64748b;">${t.item}</div>
+                        </div>
+                    </div>
+                    <div style="font-family: monospace; color: #10b981; font-weight: 500;">
+                        ₹${Number(t.amount).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+
+            renderReportCharts(data);
+        } catch(err) {
+            window.app.showToast(err.message, 'error');
+        }
+    }
+
+    function renderReportCharts(data) {
+        const colors = { HYD: '#3b82f6', CHE: '#10b981', BLR: '#f59e0b' };
+
+        // 1. Monthly Trend (Line)
+        if(trendChartObj) trendChartObj.destroy();
+        const trendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+        const trendDatasets = data.activeNodes.map(node => ({
+            label: node,
+            data: data.monthlyTrend.datasets[node].map(v => v / 1000), // convert to K
+            borderColor: colors[node],
+            backgroundColor: colors[node],
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: colors[node],
+            pointBorderColor: '#111827'
+        }));
+        trendChartObj = new Chart(trendCtx, {
+            type: 'line',
+            data: { labels: data.monthlyTrend.labels, datasets: trendDatasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 8, usePointStyle: true } } },
+                scales: {
+                    x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 11} } },
+                    y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 11} }, beginAtZero: true }
+                }
+            }
+        });
+
+        // 2. Sales vs Purchases (Bar)
+        if(vsChartObj) vsChartObj.destroy();
+        const vsCtx = document.getElementById('salesVsPurchasesChart').getContext('2d');
+        vsChartObj = new Chart(vsCtx, {
+            type: 'bar',
+            data: {
+                labels: data.salesVsPurchases.labels,
+                datasets: [
+                    { label: 'Sales', data: data.salesVsPurchases.sales.map(v => v / 1000), backgroundColor: '#10b981', borderRadius: 4 },
+                    { label: 'Purchases', data: data.salesVsPurchases.purchases.map(v => v / 1000), backgroundColor: '#ef4444', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 8, usePointStyle: true } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#64748b', font: {size: 11} } },
+                    y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 11} } }
+                }
+            }
+        });
+
+        // 3. Sales by Category (Horizontal Bar)
+        if(catChartObj) catChartObj.destroy();
+        let catLabels = Object.keys(data.salesByCategory);
+        let catVals = Object.values(data.salesByCategory);
+        if(catLabels.length === 0) {
+            catLabels = ['Electronics', 'Clothing'];
+            catVals = [0, 0];
+        }
+
+        const catCtx = document.getElementById('categoryChart').getContext('2d');
+        catChartObj = new Chart(catCtx, {
+            type: 'bar',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    label: 'Sales (₹K)',
+                    data: catVals.map(v => v / 1000),
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 11} } },
+                    y: { grid: { display: false }, ticks: { color: '#94a3b8', font: {size: 11} } }
+                }
+            }
+        });
+    }
+</script>

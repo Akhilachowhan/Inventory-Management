@@ -1,0 +1,138 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <h1>Purchase Orders</h1>
+        <button class="btn btn-primary" onclick="window.showPurchaseModal()">+ Record Purchase</button>
+    </div>
+
+    <div class="card" style="padding: 0;">
+        <div class="table-container" style="margin-top: 0;">
+            <table class="table" id="purchases-table">
+                <thead>
+                    <tr>
+                        <th>Purchase ID</th>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Supplier</th>
+                        <th>Quantity</th>
+                        <th>Total Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Injected via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Record Purchase Modal -->
+<div class="modal-overlay" id="purchase-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Record Purchase</h3>
+            <button class="modal-close" onclick="window.closePurchaseModal()">&times;</button>
+        </div>
+        <form id="purchase-form">
+            <div class="form-group">
+                <label>Warehouse Location</label>
+                <select id="purchase-location" class="form-control" required>
+                    <option value="HYD">Hyderabad (HYD)</option>
+                    <option value="CHE">Chennai (CHE)</option>
+                    <option value="BLR">Bangalore (BLR)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Product</label>
+                <select id="purchase-product" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+                <label>Supplier</label>
+                <select id="purchase-supplier" class="form-control" required></select>
+            </div>
+            <div class="grid-2" style="gap: 1rem;">
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="purchase-qty" class="form-control" min="1" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Record & Update Stock</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    window.initPurchases = async function() {
+        
+
+        await loadPurchasesTable();
+        
+        document.getElementById('purchase-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                product_id: parseInt(document.getElementById('purchase-product').value),
+                supplier_id: parseInt(document.getElementById('purchase-supplier').value),
+                quantity: parseInt(document.getElementById('purchase-qty').value),
+                location: document.getElementById('purchase-location').value
+            };
+            
+            try {
+                const btn = e.target.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                
+                await ApiService.recordPurchase(data);
+                window.app.showToast('Purchase recorded successfully', 'success');
+                closePurchaseModal();
+                loadPurchasesTable();
+                btn.disabled = false;
+            } catch (err) {
+                window.app.showToast(err.message, 'error');
+                e.target.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+    }
+
+    async function loadPurchasesTable() {
+        try {
+            const purchases = await ApiService.getPurchases();
+            const tbody = document.querySelector('#purchases-table tbody');
+            if (purchases.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280; padding: 20px;">No purchases recorded</td></tr>';
+                return;
+            }
+            tbody.innerHTML = purchases.map(p => {
+                const date = new Date(p.purchase_date).toLocaleDateString();
+                const total = (p.quantity * p.purchase_price).toFixed(2);
+                return `
+                <tr>
+                    <td style="color: #6b7280;">po${p.id}</td>
+                    <td class="text-secondary">${date}</td>
+                    <td style="font-weight: 500; color: #4f6ef7;">${p.product_name || '-'}</td>
+                    <td>${p.supplier_name || '-'}</td>
+                    <td><span class="badge" style="background: #d1fae5; color: #10b981;">+${p.quantity}</span></td>
+                    <td style="font-weight: bold;">$${total}</td>
+                </tr>
+                `;
+            }).join('');
+        } catch (err) {}
+    }
+
+    window.showPurchaseModal = async function() {
+        try {
+            const products = await ApiService.getProducts();
+            const suppliers = await ApiService.getSuppliers();
+            
+            const prodSelect = document.getElementById('purchase-product');
+            const supSelect = document.getElementById('purchase-supplier');
+            
+            prodSelect.innerHTML = `<option value="" disabled selected>Select a product...</option>` + products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            supSelect.innerHTML = `<option value="" disabled selected>Select a supplier...</option>` + suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            document.getElementById('purchase-form').reset();
+            document.getElementById('purchase-modal').classList.add('active');
+        } catch(err) {}
+    }
+
+    window.closePurchaseModal = function() {
+        document.getElementById('purchase-modal').classList.remove('active');
+    }
+</script>

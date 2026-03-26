@@ -1,0 +1,85 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <h1>Inventory Stock across Nodes</h1>
+        <div>
+            <select id="warehouse-select" class="form-control" style="width: 200px; display: inline-block;">
+                <option value="ALL">All Warehouses</option>
+                <option value="HYD">Hyderabad (HYD)</option>
+                <option value="CHE">Chennai (CHE)</option>
+                <option value="BLR">Bangalore (BLR)</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="loadStockTable()">Refresh</button>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0;">
+        <div class="table-container" style="margin-top: 0;">
+            <table class="table" id="stock-table">
+                <thead>
+                    <tr>
+                        <th>Product ID</th>
+                        <th>Product Name</th>
+                        <th>Current Stock</th>
+                        <th>Warehouse</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Injected via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.initStock = async function() {
+        
+
+        document.getElementById('warehouse-select').addEventListener('change', loadStockTable);
+        await loadStockTable();
+    }
+
+    async function loadStockTable() {
+        const location = document.getElementById('warehouse-select').value;
+        try {
+            const tbody = document.querySelector('#stock-table tbody');
+            let data = [];
+            
+            if (location === 'ALL') {
+                const nodes = ['HYD', 'CHE', 'BLR'];
+                const status = await ApiService.getSystemStatus();
+                // We fetch stock per node if not down
+                for (let node of nodes) {
+                    if (!status.nodes[node]) {
+                        try {
+                            const nodeStock = await ApiService.getStock(node);
+                            data = data.concat(nodeStock);
+                        } catch (e) {
+                            console.error('Failed to get stock for node', node);
+                        }
+                    }
+                }
+            } else {
+                data = await ApiService.getStock(location);
+            }
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280; padding: 20px;">No stock records found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(s => {
+                return `
+                <tr>
+                    <td style="color: #6b7280;">PID-${s.product_id}</td>
+                    <td style="font-weight: 500; color: #4f6ef7;">${s.product_name || '-'}</td>
+                    <td><span class="badge" style="background: #e0f2fe; color: #0284c7;">${s.quantity} units</span></td>
+                    <td style="font-weight: bold;">${s.warehouse}</td>
+                </tr>
+                `;
+            }).join('');
+        } catch (err) {
+            window.app.showToast(err.message, 'error');
+        }
+    }
+</script>

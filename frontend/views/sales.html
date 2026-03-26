@@ -1,0 +1,145 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <h1>Sales Ledger</h1>
+        <button class="btn btn-primary" onclick="window.showSaleModal()">+ Record Sale</button>
+    </div>
+
+    <div class="card" style="padding: 0;">
+        <div class="table-container" style="margin-top: 0;">
+            <table class="table" id="sales-table">
+                <thead>
+                    <tr>
+                        <th>Sale ID</th>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Customer</th>
+                        <th>Quantity</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Injected via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Record Sale Modal -->
+<div class="modal-overlay" id="sale-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Record Sale</h3>
+            <button class="modal-close" onclick="window.closeSaleModal()">&times;</button>
+        </div>
+        <form id="sale-form">
+            <div class="form-group">
+                <label>Warehouse Location</label>
+                <select id="sale-location" class="form-control" required>
+                    <option value="HYD">Hyderabad (HYD)</option>
+                    <option value="CHE">Chennai (CHE)</option>
+                    <option value="BLR">Bangalore (BLR)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Product</label>
+                <select id="sale-product" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+                <label>Customer Name (Optional)</label>
+                <input type="text" id="sale-customer" class="form-control">
+            </div>
+            <div class="grid-2" style="gap: 1rem;">
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="sale-qty" class="form-control" min="1" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Complete Transaction</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let _saleProductsCache = [];
+    
+    window.initSales = async function() {
+        
+
+        await loadSalesTable();
+        
+        document.getElementById('sale-product').addEventListener('change', (e) => {
+            const pId = parseInt(e.target.value);
+            const p = _saleProductsCache.find(x => x.id === pId);
+            if(p) {
+                document.getElementById('sale-price').value = p.price;
+                document.getElementById('sale-qty').max = p.quantity;
+            }
+        });
+
+        document.getElementById('sale-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                product_id: parseInt(document.getElementById('sale-product').value),
+                customer_name: document.getElementById('sale-customer').value,
+                quantity: parseInt(document.getElementById('sale-qty').value),
+                location: document.getElementById('sale-location').value
+            };
+            
+            try {
+                const btn = e.target.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                
+                await ApiService.recordSale(data);
+                window.app.showToast('Sale recorded successfully', 'success');
+                closeSaleModal();
+                loadSalesTable();
+                btn.disabled = false;
+            } catch (err) {
+                window.app.showToast(err.message, 'error');
+                e.target.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+    }
+
+    async function loadSalesTable() {
+        try {
+            const sales = await ApiService.getSales();
+            const tbody = document.querySelector('#sales-table tbody');
+            if (sales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280; padding: 20px;">No sales records found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = sales.map(s => {
+                const date = new Date(s.sale_date).toLocaleDateString();
+                const total = (s.quantity * s.sale_price).toFixed(2);
+                return `
+                <tr>
+                    <td style="color: #6b7280;">sale${s.id}</td>
+                    <td class="text-secondary">${date}</td>
+                    <td style="font-weight: 500; color: #4f6ef7;">${s.product_name || '-'}</td>
+                    <td>${s.customer_name || '-'}</td>
+                    <td><span class="badge" style="background: #fee2e2; color: #ef4444;">-${s.quantity}</span></td>
+                    <td style="font-weight: bold;">$${total}</td>
+                </tr>
+                `;
+            }).join('');
+        } catch (err) {}
+    }
+
+    window.showSaleModal = async function() {
+        try {
+            _saleProductsCache = await ApiService.getProducts();
+            const prodSelect = document.getElementById('sale-product');
+            prodSelect.innerHTML = `<option value="" disabled selected>Select Product...</option>` + 
+                _saleProductsCache.map(p => `<option value="${p.id}">${p.name} (Max Stock depends on warehouse)</option>`).join('');
+            
+            document.getElementById('sale-form').reset();
+            document.getElementById('sale-modal').classList.add('active');
+        } catch(err) {}
+    }
+
+    window.closeSaleModal = function() {
+        document.getElementById('sale-modal').classList.remove('active');
+    }
+</script>

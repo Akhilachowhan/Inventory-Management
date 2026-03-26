@@ -1,0 +1,75 @@
+<div class="fade-in">
+    <div class="flex justify-between items-center mb-4">
+        <h1>Node Failure Simuation</h1>
+        <button class="btn btn-primary btn-sm" onclick="loadSystemStatus()">Refresh Status</button>
+    </div>
+
+    <div class="grid-3">
+        <div class="card" id="node-hyd-card">
+            <h3>Hyderabad Database (HYD)</h3>
+            <p style="margin-top: 10px;">Status: <b id="status-hyd" style="color: green;">UP</b></p>
+            <button class="btn btn-sm mt-4" id="toggle-hyd">Disable Node</button>
+        </div>
+        <div class="card" id="node-che-card">
+            <h3>Chennai Database (CHE)</h3>
+            <p style="margin-top: 10px;">Status: <b id="status-che" style="color: green;">UP</b></p>
+            <button class="btn btn-sm mt-4" id="toggle-che">Disable Node</button>
+        </div>
+        <div class="card" id="node-blr-card">
+            <h3>Bangalore Database (BLR)</h3>
+            <p style="margin-top: 10px;">Status: <b id="status-blr" style="color: green;">UP</b></p>
+            <button class="btn btn-sm mt-4" id="toggle-blr">Disable Node</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.initSystem = async function() {
+        
+
+        // Add event listeners mappings
+        document.getElementById('toggle-hyd').addEventListener('click', () => toggleNode('HYD'));
+        document.getElementById('toggle-che').addEventListener('click', () => toggleNode('CHE'));
+        document.getElementById('toggle-blr').addEventListener('click', () => toggleNode('BLR'));
+
+        await loadSystemStatus();
+    }
+
+    async function loadSystemStatus() {
+        try {
+            const status = await ApiService.getSystemStatus();
+            const nodes = status.nodes;
+            
+            updateCardUI('HYD', nodes.HYD);
+            updateCardUI('CHE', nodes.CHE);
+            updateCardUI('BLR', nodes.BLR);
+
+        } catch (err) {
+            window.app.showToast(err.message, 'error');
+        }
+    }
+
+    function updateCardUI(node, isDown) {
+        document.getElementById(`status-${node.toLowerCase()}`).textContent = isDown ? 'DOWN' : 'UP';
+        document.getElementById(`status-${node.toLowerCase()}`).style.color = isDown ? 'red' : 'green';
+        
+        const btn = document.getElementById(`toggle-${node.toLowerCase()}`);
+        btn.textContent = isDown ? 'Enable Node' : 'Disable Node';
+        btn.classList.toggle('btn-primary', isDown);
+    }
+
+    async function toggleNode(node) {
+        try {
+            const statusLabel = document.getElementById(`status-${node.toLowerCase()}`).textContent;
+            const newStatus = statusLabel === 'UP' ? 'down' : 'up';
+            
+            const res = await ApiService.toggleNode(node, newStatus);
+            window.app.showToast(res.message, 'success');
+            
+            updateCardUI(node, newStatus === 'down');
+            
+        } catch (err) {
+            window.app.showToast(err.message, 'error');
+        }
+    }
+</script>
