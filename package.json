@@ -4,7 +4,7 @@
   "description": "Automated Inventory Management System",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
+    "start": "node backend/cloud_setup.js && node backend/server.js",
     "dev": "nodemon backend/server.js"
   },
   "dependencies": {
