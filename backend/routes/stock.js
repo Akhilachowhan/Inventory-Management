@@ -9,6 +9,10 @@ router.use(verifyToken);
 router.post('/update', async (req, res) => {
     const { product_id, quantity, location } = req.body;
     
+    if (isNaN(quantity) || Number(quantity) < 0) {
+        return res.status(400).json({ error: 'Quantity cannot be negative' });
+    }
+
     if (!['HYD', 'CHE', 'BLR'].includes(location?.toUpperCase())) {
         return res.status(400).json({ error: 'Invalid location' });
     }
@@ -16,14 +20,25 @@ router.post('/update', async (req, res) => {
     const warehouse = location.toUpperCase();
     try {
         const db = getDBConnection(warehouse);
-        const [existing] = await db.execute('SELECT quantity FROM stock WHERE product_id = ? AND warehouse = ?', [product_id, warehouse]);
-        
-        if (existing.length > 0) {
-            await db.execute('UPDATE stock SET quantity = ? WHERE product_id = ? AND warehouse = ?', [quantity, product_id, warehouse]);
-        } else {
-            await db.execute('INSERT INTO stock (product_id, quantity, warehouse) VALUES (?, ?, ?)', [product_id, quantity, warehouse]);
+        const connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            const [existing] = await connection.execute('SELECT quantity FROM stock WHERE product_id = ? AND warehouse = ? FOR UPDATE', [product_id, warehouse]);
+            
+            if (existing.length > 0) {
+                await connection.execute('UPDATE stock SET quantity = ? WHERE product_id = ? AND warehouse = ?', [quantity, product_id, warehouse]);
+            } else {
+                await connection.execute('INSERT INTO stock (product_id, quantity, warehouse) VALUES (?, ?, ?)', [product_id, quantity, warehouse]);
+            }
+            await connection.commit();
+            res.status(200).json({ message: 'Stock updated in ' + warehouse });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-        res.status(200).json({ message: 'Stock updated in ' + warehouse });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

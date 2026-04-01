@@ -1,4 +1,13 @@
-const operationLogs = [];
+const operationLogs = [
+    {
+        id: 'init-123456',
+        action: 'SYSTEM_STARTUP',
+        nodes: ['HYD', 'CHE', 'BLR'],
+        message: 'Distributed Logging Service Initialized and ready to record syncs, replications, and node configs.',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        status: 'Success'
+    }
+];
 
 function logOperation(action, nodes, message, status = 'Success') {
     const timestamp = new Date();

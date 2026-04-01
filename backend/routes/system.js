@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { getDBConnection, DOWN_NODES } = require('../config/db_utils');
 const { logOperation } = require('../config/logger');
-const { verifyToken } = require('./auth');
+const { verifyToken, verifyAdmin } = require('./auth');
 
 router.use(verifyToken);
 
 // Toggle node status for fault tolerance simulation
-router.post('/toggle-node', (req, res) => {
+router.post('/toggle-node', verifyAdmin, (req, res) => {
     const { location, status } = req.body;
     
     if (!['HYD', 'CHE', 'BLR'].includes(location?.toUpperCase())) {
@@ -25,7 +25,7 @@ router.get('/status', (req, res) => {
     res.json({ nodes: DOWN_NODES });
 });
 
-router.post('/demo-data', async (req, res) => {
+router.post('/demo-data', verifyAdmin, async (req, res) => {
     try {
         const locations = ['HYD', 'CHE', 'BLR'];
         let injected = 0;
@@ -65,7 +65,7 @@ router.post('/demo-data', async (req, res) => {
 });
 
 // Purge all transactions (Clear Data)
-router.delete('/demo-data', async (req, res) => {
+router.delete('/demo-data', verifyAdmin, async (req, res) => {
     try {
         const locations = ['HYD', 'CHE', 'BLR'];
         let cleared = 0;

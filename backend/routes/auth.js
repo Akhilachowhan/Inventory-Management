@@ -27,11 +27,6 @@ router.post('/login', async (req, res) => {
         
         let isValid = await bcrypt.compare(password, user.password);
         
-        // Developer Override: Bypass busted hash from database setup script
-        if (password === 'admin123' || password === 'staff123' || password === user.password) {
-            isValid = true;
-        }
-
         if (!isValid) return res.status(401).json({ error: 'Invalid username or password' });
         
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
@@ -53,8 +48,16 @@ const verifyToken = (req, res, next) => {
     });
 };
 
+const verifyAdmin = (req, res, next) => {
+    if (req.user && req.user.role === 'Admin') {
+        next();
+    } else {
+        return res.status(403).json({ error: 'Forbidden: Admin access only' });
+    }
+};
+
 router.get('/me', verifyToken, (req, res) => {
     res.json({ user: req.user });
 });
 
-module.exports = { router, verifyToken };
+module.exports = { router, verifyToken, verifyAdmin };

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDBConnection, executeOnAll, DOWN_NODES } = require('../config/db_utils');
 const { logOperation } = require('../config/logger');
-const { verifyToken } = require('./auth');
+const { verifyToken, verifyAdmin } = require('./auth');
 
 router.use(verifyToken);
 
@@ -20,19 +20,22 @@ router.get('/', async (req, res) => {
         `;
         const [rows] = await db.execute(query);
         
-        // Aggregate stock dynamically from all active distributed nodes
-        for (let row of rows) {
-            row.quantity = 0;
-            row.min_stock = 10;
-            for (let node of ['HYD', 'CHE', 'BLR']) {
-                if (!DOWN_NODES[node]) {
-                    const nodeDb = getDBConnection(node);
-                    const [stock] = await nodeDb.execute('SELECT SUM(quantity) as qty FROM stock WHERE product_id = ?', [row.id]);
-                    if (stock.length > 0 && stock[0].qty) {
-                        row.quantity += Number(stock[0].qty);
-                    }
+        // Bulk-fetch stock from all fragmented nodes asynchronously
+        let globalStockMap = {};
+        for (let node of ['HYD', 'CHE', 'BLR']) {
+            if (!DOWN_NODES[node]) {
+                const nodeDb = getDBConnection(node);
+                const [sRows] = await nodeDb.execute('SELECT product_id, SUM(quantity) as qty FROM stock GROUP BY product_id');
+                for (let sRow of sRows) {
+                    globalStockMap[sRow.product_id] = (globalStockMap[sRow.product_id] || 0) + Number(sRow.qty);
                 }
             }
+        }
+
+        // Aggregate stock dynamically in-memory from the cache
+        for (let row of rows) {
+            row.quantity = globalStockMap[row.id] || 0;
+            row.min_stock = 10;
         }
         res.json(rows);
     } catch (err) {
@@ -74,7 +77,7 @@ const demoTemplates = [
     { prefix: 'Microwave Oven', category: 3, priceBase: 4000 }
 ];
 
-router.post('/demo', async (req, res) => {
+router.post('/demo', verifyAdmin, async (req, res) => {
     const template = demoTemplates[demoCounter % demoTemplates.length];
     demoCounter++;
     
@@ -111,7 +114,7 @@ router.post('/demo', async (req, res) => {
 });
 
 // Purge Demo Products
-router.delete('/demo', async (req, res) => {
+router.delete('/demo', verifyAdmin, async (req, res) => {
     try {
         await executeOnAll(`DELETE FROM products WHERE name LIKE 'Demo Product %'`, []);
         logOperation('DEMO_PURGE', ['HYD', 'CHE', 'BLR'], `Purged all synthetic demo products.`);
@@ -134,7 +137,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete product (Replicated)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
     try {
         await executeOnAll(`DELETE FROM products WHERE id = ?`, [req.params.id]);
         res.json({ message: 'Product deleted across all nodes' });

@@ -105,7 +105,7 @@
                 <td class="text-secondary">${s.address || '-'}</td>
                 <td>
                     <button class="btn btn-sm" style="background: #e5e7eb; color: #374151;" onclick="window.editSupplier(${s.id})">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="window.deleteSupplier(${s.id})">Drop</button>
+                    ${window.app.currentUser.role === 'Admin' ? `<button class="btn btn-sm btn-danger" onclick="window.deleteSupplier(${s.id})">Drop</button>` : ''}
                 </td>
             </tr>
         `).join('');

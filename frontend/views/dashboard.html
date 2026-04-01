@@ -27,7 +27,7 @@
             </div>
             <b id="dash-low-stock" style="font-size: 28px; line-height: 1.2; color: #f59e0b;">--</b>
             <span style="font-size: 13px; font-weight: 600; color: #f8fafc; margin-top: 4px;">Low Stock Alerts</span>
-            <span style="font-size: 11px; color: #64748b; margin-top: 4px;">Items need reorder</span>
+            <span id="low-stock-items-list" style="font-size: 11px; color: #64748b; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Items need reorder">Items need reorder</span>
         </div>
         <div class="card" style="display: flex; flex-direction: column;">
             <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16,185,129,0.1); color: #10b981; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
@@ -84,6 +84,15 @@
             document.getElementById('dash-weekly').textContent = '₹ ' + ((metrics.weeklySales || 0) / 1000).toFixed(1) + 'K';
             
             document.getElementById('dash-low-stock').textContent = metrics.lowStockCount || 0;
+            const itemsListEl = document.getElementById('low-stock-items-list');
+            if(metrics.lowStockItems && metrics.lowStockItems.length > 0) {
+                const text = metrics.lowStockItems.join(', ');
+                itemsListEl.textContent = text;
+                itemsListEl.title = text; // allow tooltip on hover if it truncates
+            } else {
+                itemsListEl.textContent = 'Inventory is healthy';
+                itemsListEl.title = 'Inventory is healthy';
+            }
 
             document.getElementById('querying-nodes-text').textContent = `Querying all ${metrics.activeNodes.length} nodes: ${metrics.activeNodes.join(', ')}`;
 

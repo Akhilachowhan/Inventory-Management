@@ -2,10 +2,18 @@
     <div class="flex justify-between items-center mb-4">
         <h1>Inventory Catalog</h1>
         <div style="display: flex; gap: 10px;">
-            <button class="btn btn-primary" onclick="window.generateDemoProduct()" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">+ Add Demo Product</button>
-            <button class="btn btn-primary" onclick="window.clearDemoProducts()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">Clear Demo Products</button>
-            <input type="file" id="csv-upload" accept=".csv" multiple style="display: none;" onchange="window.handleCSVUpload(event)">
-            <button class="btn btn-primary" style="background: #3b82f6;" onclick="document.getElementById('csv-upload').click()">📁 Upload Demo CSV</button>
+            <input type="text" id="search-product" placeholder="Search products..." class="form-control"
+                style="width: 200px; padding: 6px 12px;" onkeyup="window.filterProducts()">
+            <button id="btn-add-demo" class="btn btn-primary" onclick="window.generateDemoProduct()"
+                style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">+
+                Add Demo Product</button>
+            <button id="btn-clear-demo" class="btn btn-primary" onclick="window.clearDemoProducts()"
+                style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">Clear
+                Demo Products</button>
+            <input type="file" id="csv-upload" accept=".csv" multiple style="display: none;"
+                onchange="window.handleCSVUpload(event)">
+            <button id="btn-csv-upload" class="btn btn-primary" style="background: #3b82f6;"
+                onclick="document.getElementById('csv-upload').click()">📁 Upload Demo CSV</button>
             <button class="btn btn-primary" onclick="window.showProductModal()">+ Add Product</button>
         </div>
     </div>
@@ -72,11 +80,15 @@
 <script>
     let currentProducts = [];
 
-    window.initProducts = async function() {
-        
+    window.initProducts = async function () {
+        if (window.app.currentUser.role === 'Staff') {
+            document.getElementById('btn-add-demo').style.display = 'none';
+            document.getElementById('btn-clear-demo').style.display = 'none';
+            document.getElementById('btn-csv-upload').style.display = 'none';
+        }
 
         await loadProducts();
-        
+
         document.getElementById('product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('product-id').value;
@@ -87,11 +99,11 @@
                 category_id: Math.floor(Math.random() * 3) + 1, // Safe fallback default category 
                 initial_stock: parseInt(document.getElementById('product-qty').value) || 0
             };
-            
+
             try {
                 if (id) await ApiService.updateProduct(id, data);
                 else await ApiService.createProduct(data);
-                
+
                 window.app.showToast('Product saved successfully');
                 closeProductModal();
                 loadProducts();
@@ -99,7 +111,7 @@
         });
     }
 
-    window.handleCSVUpload = async function(event) {
+    window.handleCSVUpload = async function (event) {
         const files = event.target.files;
         if (!files || files.length === 0) return;
 
@@ -108,7 +120,7 @@
         for (let f = 0; f < files.length; f++) {
             const file = files[f];
             const text = await file.text();
-            
+
             const lines = text.split('\\n').filter(line => line.trim().length > 0);
             if (lines.length < 2) continue;
 
@@ -121,24 +133,34 @@
 
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim());
-                if(values.length < 2) continue;
-                
+                if (values.length < 2) continue;
+
                 const data = {
                     name: values[nameIdx] ? values[nameIdx].replace(/^"|"$/g, '') : '',
-                    price: priceIdx !== -1 && values[priceIdx] ? parseFloat(values[priceIdx].replace(/[^0-9.-]+/g,"")) || 0 : 0,
-                    quantity: qtyIdx !== -1 && values[qtyIdx] ? parseInt(values[qtyIdx].replace(/[^0-9-]+/g,"")) || 0 : 0,
+                    price: priceIdx !== -1 && values[priceIdx] ? parseFloat(values[priceIdx].replace(/[^0-9.-]+/g, "")) || 0 : 0,
+                    quantity: qtyIdx !== -1 && values[qtyIdx] ? parseInt(values[qtyIdx].replace(/[^0-9-]+/g, "")) || 0 : 0,
                     min_stock: 10,
                     supplier_id: null
                 };
-                
-                try { await ApiService.createProduct(data); } 
-                catch(err) { console.error('Row failed:', err); }
+
+                try { await ApiService.createProduct(data); }
+                catch (err) { console.error('Row failed:', err); }
             }
         }
 
         window.app.showToast('All Demo Data Uploaded Successfully!', 'success');
         loadProducts();
-        event.target.value = ''; 
+        event.target.value = '';
+    };
+
+    window.filterProducts = function () {
+        const query = document.getElementById('search-product').value.toLowerCase();
+        const filtered = currentProducts.filter(p =>
+            p.name.toLowerCase().includes(query) ||
+            ('prod' + p.id).includes(query) ||
+            (p.category_name && p.category_name.toLowerCase().includes(query))
+        );
+        renderProducts(filtered);
     };
 
     async function loadProducts() {
@@ -168,23 +190,23 @@
                 <td class="text-secondary">${p.supplier_name || '-'}</td>
                 <td>
                     <button class="btn btn-sm" style="background: #e5e7eb; color: #374151;" onclick="window.editProduct(${p.id})">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="window.deleteProduct(${p.id})">Delete</button>
+                    ${window.app.currentUser.role === 'Admin' ? `<button class="btn btn-sm btn-danger" onclick="window.deleteProduct(${p.id})">Delete</button>` : ''}
                 </td>
             </tr>
         `).join('');
     }
 
-    window.showProductModal = function() {
+    window.showProductModal = function () {
         document.getElementById('product-form').reset();
         document.getElementById('product-id').value = '';
         document.getElementById('product-qty').value = '0';
         document.getElementById('product-modal-title').textContent = 'Add Product';
         document.getElementById('product-modal').classList.add('active');
     }
-    window.closeProductModal = function() {
+    window.closeProductModal = function () {
         document.getElementById('product-modal').classList.remove('active');
     }
-    window.editProduct = function(id) {
+    window.editProduct = function (id) {
         const product = currentProducts.find(p => p.id === id);
         if (product) {
             document.getElementById('product-id').value = product.id;
@@ -196,34 +218,34 @@
             document.getElementById('product-modal').classList.add('active');
         }
     }
-    window.deleteProduct = async function(id) {
-        if(confirm('Are you sure you want to delete this product?')) {
+    window.deleteProduct = async function (id) {
+        if (confirm('Are you sure you want to delete this product?')) {
             try {
                 await ApiService.deleteProduct(id);
                 window.app.showToast('Product deleted');
                 loadProducts();
-            } catch(err) { window.app.showToast(err.message, 'error'); }
+            } catch (err) { window.app.showToast(err.message, 'error'); }
         }
     }
 
-    window.generateDemoProduct = async function() {
+    window.generateDemoProduct = async function () {
         try {
             const token = localStorage.getItem('token');
             const res = await fetch('/api/products/demo', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-            if(res.ok) { window.app.showToast(data.message, 'success'); loadProducts(); } 
+            if (res.ok) { window.app.showToast(data.message, 'success'); loadProducts(); }
             else { window.app.showToast(data.error, 'error'); }
-        } catch(err) { window.app.showToast('Demo generation failed', 'error'); }
+        } catch (err) { window.app.showToast('Demo generation failed', 'error'); }
     }
 
-    window.clearDemoProducts = async function() {
-        if(!confirm('Are you sure you want to delete all Demo Products?')) return;
+    window.clearDemoProducts = async function () {
+        if (!confirm('Are you sure you want to delete all Demo Products?')) return;
         try {
             const token = localStorage.getItem('token');
             const res = await fetch('/api/products/demo', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-            if(res.ok) { window.app.showToast(data.message, 'success'); loadProducts(); } 
+            if (res.ok) { window.app.showToast(data.message, 'success'); loadProducts(); }
             else { window.app.showToast(data.error, 'error'); }
-        } catch(err) { window.app.showToast('Data purge failed', 'error'); }
+        } catch (err) { window.app.showToast('Data purge failed', 'error'); }
     }
 </script>

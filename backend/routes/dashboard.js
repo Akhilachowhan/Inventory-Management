@@ -15,24 +15,36 @@ router.get('/metrics', async (req, res) => {
         const primaryNode = nodes.find(n => !DOWN_NODES[n]);
         if (primaryNode) {
             const dbPrimary = getDBConnection(primaryNode);
-            const [pRow] = await dbPrimary.execute('SELECT id, price FROM products');
+            const [pRow] = await dbPrimary.execute('SELECT id, name, price FROM products');
             metrics.totalProducts = pRow.length;
             
-            // Dynamically calculate "Low Stock" and "Total Inventory Value" by cross-querying all fragmented stock nodes globally
-            let lowCount = 0;
-            let invValue = 0;
-            for (let product of pRow) {
-                let trueGlobalQty = 0;
-                for (let n of nodes) {
-                    if (!DOWN_NODES[n]) {
-                       const [sRow] = await getDBConnection(n).execute('SELECT SUM(quantity) as qty FROM stock WHERE product_id = ?', [product.id]);
-                       if (sRow.length > 0 && sRow[0].qty) trueGlobalQty += Number(sRow[0].qty);
+            // Bulk-fetch stock from all fragmented nodes asynchronously
+            let globalStockMap = {};
+            for (let n of nodes) {
+                if (!DOWN_NODES[n]) {
+                    const [sRows] = await getDBConnection(n).execute('SELECT product_id, SUM(quantity) as qty FROM stock GROUP BY product_id');
+                    for (let row of sRows) {
+                       globalStockMap[row.product_id] = (globalStockMap[row.product_id] || 0) + Number(row.qty);
                     }
                 }
-                if (trueGlobalQty <= 10) lowCount++;
+            }
+
+            // Calculate "Low Stock" and "Total Inventory Value" entirely in-memory using the bulk cache
+            let lowCount = 0;
+            let lowStockItems = [];
+            let invValue = 0;
+            for (let product of pRow) {
+                let trueGlobalQty = globalStockMap[product.id] || 0;
+                
+                if (trueGlobalQty <= 10) {
+                    lowCount++;
+                    lowStockItems.push(product.name);
+                }
                 invValue += (trueGlobalQty * Number(product.price || 0));
             }
+            
             metrics.lowStockCount = lowCount;
+            metrics.lowStockItems = lowStockItems;
             metrics.totalInventoryStockValue = invValue;
         }
 

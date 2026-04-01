@@ -70,7 +70,7 @@ CREATE TABLE purchases (
 INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Appliances');
 INSERT INTO suppliers (name, contact, address) VALUES ('Supplier A', '1234567890', 'Mumbai'), ('Supplier B', '0987654321', 'Delhi'), ('Supplier C', '1122334455', 'Pune');
 INSERT INTO products (name, category_id, price, description) VALUES ('Smartphone', 1, 15000.00, 'Latest smartphone model'), ('T-Shirt', 2, 500.00, 'Cotton T-Shirt'), ('Mixer Grinder', 3, 2500.00, '750W Mixer'), ('Laptop', 1, 55000.00, 'Gaming laptop'), ('Jeans', 2, 1200.00, 'Denim jeans');
-INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$C82o50Wk0C6lVqY7E.24qOiK.gUo0iF1I4E1A/T8F.A8lDk8A6R1i', 'Admin');
+INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$UUt78wU07I46H0JON/gbBOtDu0l4QInQfQy6t6lLkP2qNX.sm2PV.', 'Admin');
 
 -- ==========================================
 -- SETUP CHENNAI (CHE) DATABASE
@@ -88,7 +88,7 @@ CREATE TABLE purchases ( id INT AUTO_INCREMENT PRIMARY KEY, product_id INT, quan
 INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Appliances');
 INSERT INTO suppliers (name, contact, address) VALUES ('Supplier A', '1234567890', 'Mumbai'), ('Supplier B', '0987654321', 'Delhi'), ('Supplier C', '1122334455', 'Pune');
 INSERT INTO products (name, category_id, price, description) VALUES ('Smartphone', 1, 15000.00, 'Latest smartphone model'), ('T-Shirt', 2, 500.00, 'Cotton T-Shirt'), ('Mixer Grinder', 3, 2500.00, '750W Mixer'), ('Laptop', 1, 55000.00, 'Gaming laptop'), ('Jeans', 2, 1200.00, 'Denim jeans');
-INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$C82o50Wk0C6lVqY7E.24qOiK.gUo0iF1I4E1A/T8F.A8lDk8A6R1i', 'Admin');
+INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$UUt78wU07I46H0JON/gbBOtDu0l4QInQfQy6t6lLkP2qNX.sm2PV.', 'Admin');
 
 -- ==========================================
 -- SETUP BANGALORE (BLR) DATABASE
@@ -106,4 +106,4 @@ CREATE TABLE purchases ( id INT AUTO_INCREMENT PRIMARY KEY, product_id INT, quan
 INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Appliances');
 INSERT INTO suppliers (name, contact, address) VALUES ('Supplier A', '1234567890', 'Mumbai'), ('Supplier B', '0987654321', 'Delhi'), ('Supplier C', '1122334455', 'Pune');
 INSERT INTO products (name, category_id, price, description) VALUES ('Smartphone', 1, 15000.00, 'Latest smartphone model'), ('T-Shirt', 2, 500.00, 'Cotton T-Shirt'), ('Mixer Grinder', 3, 2500.00, '750W Mixer'), ('Laptop', 1, 55000.00, 'Gaming laptop'), ('Jeans', 2, 1200.00, 'Denim jeans');
-INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$C82o50Wk0C6lVqY7E.24qOiK.gUo0iF1I4E1A/T8F.A8lDk8A6R1i', 'Admin');
+INSERT INTO users (username, password, role) VALUES ('admin', '$2b$10$UUt78wU07I46H0JON/gbBOtDu0l4QInQfQy6t6lLkP2qNX.sm2PV.', 'Admin');

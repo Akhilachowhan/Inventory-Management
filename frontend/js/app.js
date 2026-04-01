@@ -25,6 +25,18 @@ class App {
             const userRoleEl = document.getElementById('sidebar-user-role');
             if(userRoleEl) userRoleEl.textContent = (this.currentUser.role.charAt(0).toUpperCase() + this.currentUser.role.slice(1)) + ' • All Nodes';
             
+            if (this.currentUser.role === 'Staff') {
+                const sysNav = document.querySelector('.nav-item[data-route="system"]');
+                const logsNav = document.querySelector('.nav-item[data-route="logs"]');
+                if (sysNav) sysNav.style.display = 'none';
+                if (logsNav) logsNav.style.display = 'none';
+            } else {
+                const sysNav = document.querySelector('.nav-item[data-route="system"]');
+                const logsNav = document.querySelector('.nav-item[data-route="logs"]');
+                if (sysNav) sysNav.style.display = 'flex';
+                if (logsNav) logsNav.style.display = 'flex';
+            }
+            
             // Global Logout Binding
             const logoutBtn = document.getElementById('global-logout-btn');
             if (logoutBtn) {
@@ -111,6 +123,12 @@ class App {
         if (!route) route = 'dashboard';
         const validRoutes = ['login', 'dashboard', 'products', 'suppliers', 'purchases', 'sales', 'reports', 'stock', 'system', 'logs'];
         if (!validRoutes.includes(route)) route = 'dashboard';
+
+        if (this.currentUser && this.currentUser.role === 'Staff' && (route === 'system' || route === 'logs')) {
+            this.showToast('Access Denied: Administrator privileges required', 'error');
+            route = 'dashboard';
+            window.location.hash = 'dashboard';
+        }
 
         try {
             const response = await fetch(`/views/${route}.html`);

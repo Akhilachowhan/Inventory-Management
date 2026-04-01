@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDBConnection, executeOnAll } = require('../config/db_utils');
-const { verifyToken } = require('./auth');
+const { verifyToken, verifyAdmin } = require('./auth');
 
 router.use(verifyToken);
 
@@ -40,7 +40,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete supplier (Replicated)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
     try {
         await executeOnAll('DELETE FROM suppliers WHERE id = ?', [req.params.id]);
         res.json({ message: 'Supplier replicated delete successful' });
